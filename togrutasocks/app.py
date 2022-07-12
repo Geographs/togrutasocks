@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import sys
 import typing
 
 import aiofiles
@@ -70,11 +71,12 @@ class App(app.App):
             title="Proxy Output File", placeholder="Enter Proxy Output File"
         )
 
-        self._start_stop_button_label: widgets.Static = widgets.Static("Start")
         self._start_stop_button: widgets.Button = widgets.Button(
-            self._start_stop_button_label
+            "Start"
         )
-        self._start_stop_button_disabled: bool = False
+
+        self._checking: bool = False
+        self._stopping: bool = False
 
         self._checked: int = 0
         self._good: int = 0
@@ -133,8 +135,13 @@ class App(app.App):
 
     async def handle_button_pressed(self, button: widgets.ButtonPressed) -> None:
         if button.sender == self._start_stop_button:
-            if not self._start_stop_button_disabled:
+            if not self._checking:
                 await self._handle_start_stop_button_pressed()
+            elif not self._stopping:
+                self._stopping = True
+                for task in asyncio.all_tasks(self._loop):
+                    task.cancel()
+                sys.exit()
 
     async def _save_proxies(self, proxy_file_output: str) -> None:
         async with aiofiles.open(
@@ -159,7 +166,9 @@ class App(app.App):
             proxy_type in proxy_types.keys()
             and pathlib.Path(proxy_file_input).is_file()
         ):
+            self._checking = True
             self._loop.create_task(self._save_proxies(proxy_file_output))
+            self._loop.create_task(self._update_stats())
             self._update_checking_interface()
             await self._start_checking(proxy_types[proxy_type], proxy_file_input)
 
@@ -190,8 +199,6 @@ class App(app.App):
             await self._checked_label.update(f"Checked: {self._checked}")
 
     def _update_checking_interface(self) -> None:
-        self._loop.create_task(self._update_stats())
-        self._start_stop_button_disabled = True
+        self._start_stop_button.label = "Stop"
         self._input_dock_view.visible = False
-        self._start_stop_button.visible = False
         self._stats_dock_view.visible = True
