@@ -1,3 +1,3 @@
-from . import app
+from togrutasocks import app
 
 app.App.run()
