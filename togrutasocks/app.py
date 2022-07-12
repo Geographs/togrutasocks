@@ -14,7 +14,7 @@ from textual import geometry
 from textual import views
 from textual import widgets
 
-from . import _helpers
+from togrutasocks import _helpers
 
 
 class App(app.App):
